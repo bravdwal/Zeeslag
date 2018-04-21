@@ -6,6 +6,12 @@ public class Classic {
   private int w = 60;
   private int h = 60;
   private boolean gewonnen, verloren;
+  private int schotenDoorComputer = 0;
+  private int schotenDoorSpeler = 0;
+  private int[] potentialT_x = {}; //lijst met potentiele x target posities
+  private int[] potentialT_y = {}; //lijst met potentiele y target posities
+  private int hitDoorComputer = 0; // variabele die bijhoudt hoeveel bootjes al zijn geraakt door de computer
+  private int hitDoorSpeler = 0;   // variabele die bijhoudt hoeveel bootjes al zijn geraakt door de speler
 
   /*--------------Bord wordt gemaakt--------------*/
   private Bord bordC = new Bord(325, 240, 10, 10, w, h);
@@ -65,16 +71,32 @@ public class Classic {
     boot2CY = new int[2];
     boot1CX = new int[2];
     boot1CY = new int[2];
-
+    
     //variabelen die nodig zijn om het spel te laten werken !!OPM: w en h worden onmiddellijk geïnitialiseerd bij het declareren
     gewonnen = false;
     verloren = false;
   }
 
   public void act() {
+    /*--------------Alle tekst wordt hier gebundeld--------------*/
+    //aanduiden dat de gebruiker in de classic zit
+    textAlign(CENTER, TOP);
+    textFont(f, 75);
+    fill(255);
+    text("Classic" , width/2, 70);
+    
+    //aanduiden welk bord van wie is
+    textAlign(LEFT);
+    textFont(f, 25);
+    fill(120);
+    text("Computers veld:", bordC.posX, bordC.posY - 15);
+    text("Spelers veld:", bordP.posX, bordP.posY - 15);
+
+    /*--------------Borden van speler en Computer worden getekend--------------*/
     bordP.drawBord();
     bordC.drawBord();
     
+    /*--------------De stopknop en de teruknop worden getekend--------------*/
     //terugknop wordt getekend
     stroke(255);
     fill(255, 255, 255, 255);
@@ -95,7 +117,7 @@ public class Classic {
     fill(100, 100, 100, 100);
     rect(215, height-105, 110, 70);
 
-    //knoppen worden ingedrukt
+    /*--------------Als de stopknop of de terugknop worden ingedrukt moeten de correcte acties uitgevoerd worden--------------*/
     if (update(85, height-105, 120, 70)) {
       delay(200);
       classicAlGespeeld = false;
@@ -108,14 +130,37 @@ public class Classic {
     //Als nog niet alle boten gezet zijn moeten die uiteraard eerst gezet worden
     if (!alleBotenGezet()) {
       nietAlleBotenGeplaatst();
-    } else if (alleBotenGezet() && !bordC.botenGezet) {
+    }
+
+    else if (alleBotenGezet() && !bordC.botenGezet) {
       setC();
       bordC.botenGezet = true;
     }
-
+    
     //als alle boten van de speler gezet zijn en als alle boten van de computer gezet zijn kan het vuren beginnen
     else {
-      
+      //noLoop();
+      // beurt speler om te schieten
+      if (schotenDoorSpeler == schotenDoorComputer) {
+        if (update(bordC.posX, bordC.posY, w*bordC.cols, h*bordC.rows)){
+          schietenDoorSpelerClassic(); 
+        }
+      }
+      // beurt computer om te schieten
+      else if (schotenDoorComputer + 1 == schotenDoorSpeler) {
+        schietenDoorComputerClassic();
+        /*
+        if (potentialT_x.length == 0) {
+          schietenDoorComputerCampaign();
+        }
+        else {
+          hunt();
+        }
+        */
+      } 
+      /*while(!gewonnen && !verloren) {
+        println("test");
+      }*/
     }
   }
 
@@ -164,7 +209,7 @@ public class Classic {
   }
 
   /*
-  * als de muis binnen het bordP is wordt gekeken of een bot actief en nog niet geplaatst, zo ja: hover
+  * als de muis binnen het bordP is wordt gekeken of een boot actief en nog niet geplaatst, zo ja: hover
    */
   private void hoverOverBord() {
     if (mouseX >= bordP.posX && mouseX <= (bordP.posX + w * bordP.cols) && mouseY >= bordP.posY && mouseY <= (bordP.posY + h *bordP.rows)) {
@@ -333,7 +378,7 @@ public class Classic {
 
   /*
   * als de boot binnen het bordP vasthangt aan muis mag ze niet getoond worden;
-   * alsook als de boot geplaatst is mag de gebruiker het object niet meer zien
+  * alsook als de boot geplaatst is mag de gebruiker het object niet meer zien
    */
   private void allowedDraw() {
     for (Boot boot : bootArray) {
@@ -547,7 +592,7 @@ public class Classic {
     noLoop();
     int tel = 0; //dit wordt toegevoegd om er 100% zeker van te zijn dat het spel nooit in een oneindige lus terecht komt
     //deze while-lus is toegevoegd om ervoor te zorgen dat zeker boten elkaar niet overlappen, soms kwam er een blokje van type 4 over een blokje van type 3... nu gebeurt dit niet meer (toch niet uiteindelijk)
-    while (!alleBotenCGeplaatst() && tel < 5000) {
+    while(!alleBotenCGeplaatst() && tel < 5000) {
       for (int i = 0; i < bordC.rows; i++) {
         for (int j = 0; j < bordC.cols; j++) {
           bordC.coord[i][j].type = 0;
@@ -559,9 +604,9 @@ public class Classic {
       //boot 5  wordt gemaakt: een random richting wordt gekozen (direction = 0 -> horizontaal; direction = 1 -> verticaal)
       int direction = int(random(2));
       //als direction horizontaal is, moet de boot binnen het veld passen (elk hokje is bovendien nog leeg, dit moet dus niet in rekening gebracht worden)
-      if (direction == 0) {
-        if (boot5CY_start + 4 >= bordC.cols) {
-          while (boot5CY_start + 4 >= bordC.cols) {
+      if(direction == 0) {
+        if(boot5CY_start + 4 >= bordC.cols) {
+          while(boot5CY_start + 4 >= bordC.cols) {
             boot5CX_start = int(random(bordC.rows));
             boot5CY_start = int(random(bordC.cols));
           }
@@ -574,23 +619,23 @@ public class Classic {
         //boot 5 wordt gemaakt: alle hokjes krijgen de gepaste type (de boot zelf en de omliggende hokjes)
         for (int i = 0; i < 5; i++) {
           bordC.coord[boot5CX[i]][boot5CY[i]].type = 3;
-
-          if (boot5CX[0] != 0) {
+          
+          if(boot5CX[0] != 0) {
             bordC.coord[boot5CX[i] - 1][boot5CY[i]].type = 4;
           }
-          if (boot5CX[0] != bordC.rows - 1) {
+          if(boot5CX[0] != bordC.rows - 1) {
             bordC.coord[boot5CX[i] + 1][boot5CY[i]].type = 4;
           }
-          if (boot5CY[0] != 0) {
+          if(boot5CY[0] != 0) {
             bordC.coord[boot5CX[0]][boot5CY[0] - 1].type = 4;
           }
-          if (boot5CY[4] != bordC.cols - 1) {
+          if(boot5CY[4] != bordC.cols - 1) {
             bordC.coord[boot5CX[4]][boot5CY[4] + 1].type = 4;
           }
         }
       } else { //hier is alles hetzelfde maar dan voor verticaal ipv horizontaal
-        if (boot5CX_start + 4 >= bordC.rows) {
-          while (boot5CX_start + 4 >= bordC.rows) {
+        if(boot5CX_start + 4 >= bordC.rows) {
+          while(boot5CX_start + 4 >= bordC.rows) {
             boot5CX_start = int(random(bordC.rows));
             boot5CY_start = int(random(bordC.cols));
           }
@@ -599,73 +644,73 @@ public class Classic {
           boot5CX[i] = boot5CX_start + i;
           boot5CY[i] = boot5CY_start;
         }
-        for (int i = 0; i < 5; i++) {
+        for(int i = 0; i < 5; i++) {
           bordC.coord[boot5CX[i]][boot5CY[i]].type = 3;
-
-          if (boot5CY[0] != 0) {
+          
+          if(boot5CY[0] != 0) {
             bordC.coord[boot5CX[i]][boot5CY[i] - 1].type = 4;
           }
-          if (boot5CY[0] != bordC.cols - 1) {
+          if(boot5CY[0] != bordC.cols - 1) {
             bordC.coord[boot5CX[i]][boot5CY[i] + 1].type = 4;
           }
-          if (boot5CX[0] != 0) {
+          if(boot5CX[0] != 0) {
             bordC.coord[boot5CX[0] - 1][boot5CY[0]].type = 4;
           }
-          if (boot5CX[4] != bordC.rows - 1) {
+          if(boot5CX[4] != bordC.rows - 1) {
             bordC.coord[boot5CX[4] + 1][boot5CY[4]].type = 4;
           }
         }
       }
-
+      
       //boot 4 wordt gemaakt: alles in naar analogie van boot5 (behalve vanaf nu wordt wel rekening gehouden met de types hokjes bij het bepalen van een goede startwaarde voor x en y
       int boot4CX_start = int(random(bordC.rows));
       int boot4CY_start = int(random(bordC.cols));
       direction = int(random(2));
-      if (direction == 0) {
+      if(direction == 0) {
         //hier wordt gecontroleerd of de boot in het veld past, dit moet eerst gebeuren vooralleer er wordt gecontroleerd of de startwaarde in de weg staat van andere boten omdat je anders ArrayOutOfBoundaries-errors krijgt
-        if (boot4CY_start + 3 > bordC.cols - 1) {
-          while (boot4CY_start + 3 > bordC.cols - 1) {
+        if(boot4CY_start + 3 > bordC.cols - 1) {
+          while(boot4CY_start + 3 > bordC.cols - 1) {
             boot4CX_start = int(random(bordC.rows));
             boot4CY_start = int(random(bordC.cols));
           }
           //stel dat de startwaarde niet oke is (wel binnen veld), dan wordt een andere startwaarde gezocht, die nieuwe startwaarde moet natuurlijk nog steeds binnen het veld zijn
-          if (bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 1].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 2].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 3].type != 0) {
-            while (boot4CY_start + 3 > bordC.cols - 1 || bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 1].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 2].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 3].type != 0) {
+          if(bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 1].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 2].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 3].type != 0) {
+            while(boot4CY_start + 3 > bordC.cols - 1 || bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 1].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 2].type != 0 || bordC.coord[boot4CX_start][boot4CY_start + 3].type != 0) {
               boot4CX_start = int(random(bordC.rows));
               boot4CY_start = int(random(bordC.cols));
             }
           }
         }
         //nu de startwaarde goed is, kunnen we de coordinaten opslaan
-        for (int i = 0; i < 4; i++) {
+        for(int i = 0; i < 4; i++) {
           boot4CX[i] = boot4CX_start;
           boot4CY[i] = boot4CY_start + i;
         }
         for (int i = 0; i < 4; i++) {
           bordC.coord[boot4CX[i]][boot4CY[i]].type = 3;
-
-          if (boot4CX[0] != 0) {
+          
+          if(boot4CX[0] != 0) {
             bordC.coord[boot4CX[i] - 1][boot4CY[i]].type = 4;
           }
-          if (boot4CX[0] != bordC.rows - 1) {
+          if(boot4CX[0] != bordC.rows - 1) {
             bordC.coord[boot4CX[i] + 1][boot4CY[i]].type = 4;
           }
-          if (boot4CY[0] != 0) {
+          if(boot4CY[0] != 0) {
             bordC.coord[boot4CX[0]][boot4CY[0] - 1].type = 4;
           }
-          if (boot4CY[3] != bordC.cols - 1) {
+          if(boot4CY[3] != bordC.cols - 1) {
             bordC.coord[boot4CX[3]][boot4CY[3] + 1].type = 4;
           }
         }
       } else {
-        if (boot4CX_start + 3 > bordC.rows - 1) {
-          while (boot4CX_start + 3 > bordC.rows - 1) {
+        if(boot4CX_start + 3 > bordC.rows - 1) {
+          while(boot4CX_start + 3 > bordC.rows - 1) {
             boot4CX_start = int(random(bordC.rows));
             boot4CY_start = int(random(bordC.cols));
           }
         }
-        if (bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 1][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 2][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 3][boot4CY_start].type != 0) {
-          while (boot4CX_start + 3 > bordC.rows - 1 || bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 1][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 2][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 3][boot4CY_start].type != 0) {
+        if(bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 1][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 2][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 3][boot4CY_start].type != 0) {
+          while(boot4CX_start + 3 > bordC.rows - 1 || bordC.coord[boot4CX_start][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 1][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 2][boot4CY_start].type != 0 || bordC.coord[boot4CX_start + 3][boot4CY_start].type != 0) {
             boot4CX_start = int(random(bordC.rows));
             boot4CY_start = int(random(bordC.cols));
           }
@@ -676,71 +721,71 @@ public class Classic {
         }
         for (int i = 0; i < 4; i++) {
           bordC.coord[boot4CX[i]][boot4CY[i]].type = 3;
-
-          if (boot4CY[0] != 0) {
+          
+          if(boot4CY[0] != 0) {
             bordC.coord[boot4CX[i]][boot4CY[i] - 1].type = 4;
           }
-          if (boot4CY[0] != bordC.rows - 1) {
+          if(boot4CY[0] != bordC.rows - 1) {
             bordC.coord[boot4CX[i]][boot4CY[i] + 1].type = 4;
           }
-          if (boot4CX[0] != 0) {
+          if(boot4CX[0] != 0) {
             bordC.coord[boot4CX[0] - 1][boot4CY[0]].type = 4;
           }
-          if (boot4CX[3] != bordC.cols - 1) {
+          if(boot4CX[3] != bordC.cols - 1) {
             bordC.coord[boot4CX[3] + 1][boot4CY[3]].type = 4;
           }
         }
       }
-
+      
       //boot 3 wordt gemaakt: alles in naar analogie van boot5 (behalve vanaf nu wordt wel rekening gehouden met de types hokjes bij het bepalen van een goede startwaarde voor x en y
       int boot3CX_start = int(random(bordC.rows));
       int boot3CY_start = int(random(bordC.cols));
       direction = int(random(2));
-      if (direction == 0) {
+      if(direction == 0) {
         //hier wordt gecontroleerd of de boot in het veld past, dit moet eerst gebeuren vooralleer er wordt gecontroleerd of de startwaarde in de weg staat van andere boten omdat je anders ArrayOutOfBoundaries-errors krijgt
-        if (boot3CY_start + 2 > bordC.cols - 1) {
-          while (boot3CY_start + 2 > bordC.cols - 1) {
+        if(boot3CY_start + 2 > bordC.cols - 1) {
+          while(boot3CY_start + 2 > bordC.cols - 1) {
             boot3CX_start = int(random(bordC.rows));
             boot3CY_start = int(random(bordC.cols));
           }
           //stel dat de startwaarde niet oke is (wel binnen veld), dan wordt een andere startwaarde gezocht, die nieuwe startwaarde moet natuurlijk nog steeds binnen het veld zijn
-          if (bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 1].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 2].type != 0) {
-            while (boot3CY_start + 2 > bordC.cols - 1 || bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 1].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 2].type != 0) {
+          if(bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 1].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 2].type != 0) {
+            while(boot3CY_start + 2 > bordC.cols - 1 || bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 1].type != 0 || bordC.coord[boot3CX_start][boot3CY_start + 2].type != 0) {
               boot3CX_start = int(random(bordC.rows));
               boot3CY_start = int(random(bordC.cols));
             }
           }
         }
         //nu de startwaarde goed is, kunnen we de coordinaten opslaan
-        for (int i = 0; i < 3; i++) {
+        for(int i = 0; i < 3; i++) {
           boot3CX[i] = boot3CX_start;
           boot3CY[i] = boot3CY_start + i;
         }
         for (int i = 0; i < 3; i++) {
           bordC.coord[boot3CX[i]][boot3CY[i]].type = 3;
-
-          if (boot3CX[0] != 0) {
+          
+          if(boot3CX[0] != 0) {
             bordC.coord[boot3CX[i] - 1][boot3CY[i]].type = 4;
           }
-          if (boot3CX[0] != bordC.rows - 1) {
+          if(boot3CX[0] != bordC.rows - 1) {
             bordC.coord[boot3CX[i] + 1][boot3CY[i]].type = 4;
           }
-          if (boot3CY[0] != 0) {
+          if(boot3CY[0] != 0) {
             bordC.coord[boot3CX[0]][boot3CY[0] - 1].type = 4;
           }
-          if (boot3CY[2] != bordC.cols - 1) {
+          if(boot3CY[2] != bordC.cols - 1) {
             bordC.coord[boot3CX[2]][boot3CY[2] + 1].type = 4;
           }
         }
       } else {
-        if (boot3CX_start + 2 > bordC.rows - 1) {
-          while (boot3CX_start + 2 > bordC.rows - 1) {
+        if(boot3CX_start + 2 > bordC.rows - 1) {
+          while(boot3CX_start + 2 > bordC.rows - 1) {
             boot3CX_start = int(random(bordC.rows));
             boot3CY_start = int(random(bordC.cols));
           }
         }
-        if (bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 1][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 2][boot3CY_start].type != 0) {
-          while (boot3CX_start + 2 > bordC.rows - 1 || bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 1][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 2][boot3CY_start].type != 0) {
+        if(bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 1][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 2][boot3CY_start].type != 0) {
+          while(boot3CX_start + 2 > bordC.rows - 1 || bordC.coord[boot3CX_start][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 1][boot3CY_start].type != 0 || bordC.coord[boot3CX_start + 2][boot3CY_start].type != 0) {
             boot3CX_start = int(random(bordC.rows));
             boot3CY_start = int(random(bordC.cols));
           }
@@ -751,71 +796,71 @@ public class Classic {
         }
         for (int i = 0; i < 3; i++) {
           bordC.coord[boot3CX[i]][boot3CY[i]].type = 3;
-
-          if (boot3CY[0] != 0) {
+          
+          if(boot3CY[0] != 0) {
             bordC.coord[boot3CX[i]][boot3CY[i] - 1].type = 4;
           }
-          if (boot3CY[0] != bordC.rows - 1) {
+          if(boot3CY[0] != bordC.rows - 1) {
             bordC.coord[boot3CX[i]][boot3CY[i] + 1].type = 4;
           }
-          if (boot3CX[0] != 0) {
+          if(boot3CX[0] != 0) {
             bordC.coord[boot3CX[0] - 1][boot3CY[0]].type = 4;
           }
-          if (boot3CX[2] != bordC.cols - 1) {
+          if(boot3CX[2] != bordC.cols - 1) {
             bordC.coord[boot3CX[2] + 1][boot3CY[2]].type = 4;
           }
         }
       }
-
+      
       //boot 2 wordt gemaakt: alles in naar analogie van boot5 (behalve vanaf nu wordt wel rekening gehouden met de types hokjes bij het bepalen van een goede startwaarde voor x en y
       int boot2CX_start = int(random(bordC.rows));
       int boot2CY_start = int(random(bordC.cols));
       direction = int(random(2));
-      if (direction == 0) {
+      if(direction == 0) {
         //hier wordt gecontroleerd of de boot in het veld past, dit moet eerst gebeuren vooralleer er wordt gecontroleerd of de startwaarde in de weg staat van andere boten omdat je anders ArrayOutOfBoundaries-errors krijgt
-        if (boot2CY_start + 1 > bordC.cols - 1) {
-          while (boot2CY_start + 1 > bordC.cols - 1) {
+        if(boot2CY_start + 1 > bordC.cols - 1) {
+          while(boot2CY_start + 1 > bordC.cols - 1) {
             boot2CX_start = int(random(bordC.rows));
             boot2CY_start = int(random(bordC.cols));
           }
           //stel dat de startwaarde niet oke is (wel binnen veld), dan wordt een andere startwaarde gezocht, die nieuwe startwaarde moet natuurlijk nog steeds binnen het veld zijn
-          if (bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start][boot2CY_start + 1].type != 0) {
-            while (boot2CY_start + 1 > bordC.cols - 1 || bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start][boot2CY_start + 1].type != 0) {
+          if(bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start][boot2CY_start + 1].type != 0) {
+            while(boot2CY_start + 1 > bordC.cols - 1 || bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start][boot2CY_start + 1].type != 0) {
               boot2CX_start = int(random(bordC.rows));
               boot2CY_start = int(random(bordC.cols));
             }
           }
         }
         //nu de startwaarde goed is, kunnen we de coordinaten opslaan
-        for (int i = 0; i < 2; i++) {
+        for(int i = 0; i < 2; i++) {
           boot2CX[i] = boot2CX_start;
           boot2CY[i] = boot2CY_start + i;
         }
         for (int i = 0; i < 2; i++) {
           bordC.coord[boot2CX[i]][boot2CY[i]].type = 3;
-
-          if (boot2CX[0] != 0) {
+          
+          if(boot2CX[0] != 0) {
             bordC.coord[boot2CX[i] - 1][boot2CY[i]].type = 4;
           }
-          if (boot2CX[0] != bordC.rows - 1) {
+          if(boot2CX[0] != bordC.rows - 1) {
             bordC.coord[boot2CX[i] + 1][boot2CY[i]].type = 4;
           }
-          if (boot2CY[0] != 0) {
+          if(boot2CY[0] != 0) {
             bordC.coord[boot2CX[0]][boot2CY[0] - 1].type = 4;
           }
-          if (boot2CY[1] != bordC.cols - 1) {
+          if(boot2CY[1] != bordC.cols - 1) {
             bordC.coord[boot2CX[1]][boot2CY[1] + 1].type = 4;
           }
         }
       } else {
-        if (boot2CX_start + 1 > bordC.rows - 1) {
-          while (boot2CX_start + 1 > bordC.rows - 1) {
+        if(boot2CX_start + 1 > bordC.rows - 1) {
+          while(boot2CX_start + 1 > bordC.rows - 1) {
             boot2CX_start = int(random(bordC.rows));
             boot2CY_start = int(random(bordC.cols));
           }
         }
-        if (bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start + 1][boot2CY_start].type != 0) {
-          while (boot2CX_start + 1 > bordC.rows - 1 || bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start + 1][boot2CY_start].type != 0) {
+        if(bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start + 1][boot2CY_start].type != 0) {
+          while(boot2CX_start + 1 > bordC.rows - 1 || bordC.coord[boot2CX_start][boot2CY_start].type != 0 || bordC.coord[boot2CX_start + 1][boot2CY_start].type != 0) {
             boot2CX_start = int(random(bordC.rows));
             boot2CY_start = int(random(bordC.cols));
           }
@@ -826,71 +871,71 @@ public class Classic {
         }
         for (int i = 0; i < 2; i++) {
           bordC.coord[boot2CX[i]][boot2CY[i]].type = 3;
-
-          if (boot2CY[0] != 0) {
+          
+          if(boot2CY[0] != 0) {
             bordC.coord[boot2CX[i]][boot2CY[i] - 1].type = 4;
           }
-          if (boot2CY[0] != bordC.rows - 1) {
+          if(boot2CY[0] != bordC.rows - 1) {
             bordC.coord[boot2CX[i]][boot2CY[i] + 1].type = 4;
           }
-          if (boot2CX[0] != 0) {
+          if(boot2CX[0] != 0) {
             bordC.coord[boot2CX[0] - 1][boot2CY[0]].type = 4;
           }
-          if (boot2CX[1] != bordC.cols - 1) {
+          if(boot2CX[1] != bordC.cols - 1) {
             bordC.coord[boot2CX[1] + 1][boot2CY[1]].type = 4;
           }
         }
       }
-
+      
       //boot 1 wordt gemaakt: alles in naar analogie van boot5 (behalve vanaf nu wordt wel rekening gehouden met de types hokjes bij het bepalen van een goede startwaarde voor x en y
       int boot1CX_start = int(random(bordC.rows));
       int boot1CY_start = int(random(bordC.cols));
       direction = int(random(2));
-      if (direction == 0) {
+      if(direction == 0) {
         //hier wordt gecontroleerd of de boot in het veld past, dit moet eerst gebeuren vooralleer er wordt gecontroleerd of de startwaarde in de weg staat van andere boten omdat je anders ArrayOutOfBoundaries-errors krijgt
-        if (boot1CY_start + 1 > bordC.cols - 1) {
-          while (boot1CY_start + 1 > bordC.cols - 1) {
+        if(boot1CY_start + 1 > bordC.cols - 1) {
+          while(boot1CY_start + 1 > bordC.cols - 1) {
             boot1CX_start = int(random(bordC.rows));
             boot1CY_start = int(random(bordC.cols));
           }
           //stel dat de startwaarde niet oke is (wel binnen veld), dan wordt een andere startwaarde gezocht, die nieuwe startwaarde moet natuurlijk nog steeds binnen het veld zijn
-          if (bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start][boot1CY_start + 1].type != 0) {
-            while (boot1CY_start + 1 > bordC.cols - 1 || bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start][boot1CY_start + 1].type != 0) {
+          if(bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start][boot1CY_start + 1].type != 0) {
+            while(boot1CY_start + 1 > bordC.cols - 1 || bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start][boot1CY_start + 1].type != 0) {
               boot1CX_start = int(random(bordC.rows));
               boot1CY_start = int(random(bordC.cols));
             }
           }
         }
         //nu de startwaarde goed is, kunnen we de coordinaten opslaan
-        for (int i = 0; i < 2; i++) {
+        for(int i = 0; i < 2; i++) {
           boot1CX[i] = boot1CX_start;
           boot1CY[i] = boot1CY_start + i;
         }
         for (int i = 0; i < 2; i++) {
           bordC.coord[boot1CX[i]][boot1CY[i]].type = 3;
-
-          if (boot1CX[0] != 0) {
+          
+          if(boot1CX[0] != 0) {
             bordC.coord[boot1CX[i] - 1][boot1CY[i]].type = 4;
           }
-          if (boot1CX[0] != bordC.rows - 1) {
+          if(boot1CX[0] != bordC.rows - 1) {
             bordC.coord[boot1CX[i] + 1][boot1CY[i]].type = 4;
           }
-          if (boot1CY[0] != 0) {
+          if(boot1CY[0] != 0) {
             bordC.coord[boot1CX[0]][boot1CY[0] - 1].type = 4;
           }
-          if (boot1CY[1] != bordC.cols - 1) {
+          if(boot1CY[1] != bordC.cols - 1) {
             bordC.coord[boot1CX[1]][boot1CY[1] + 1].type = 4;
           }
         }
       } else {
-        if (boot1CX_start + 1 > bordC.rows - 1) {
-          while (boot1CX_start + 1 > bordC.rows - 1) {
+        if(boot1CX_start + 1 > bordC.rows - 1) {
+          while(boot1CX_start + 1 > bordC.rows - 1) {
             boot1CX_start = int(random(bordC.rows));
             boot1CY_start = int(random(bordC.cols));
           }
         }
-        if (bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start + 1][boot1CY_start].type != 0) {
-          while (boot1CX_start + 1 > bordC.rows - 1 || bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start + 1][boot1CY_start].type != 0) {
+        if(bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start + 1][boot1CY_start].type != 0) {
+          while(boot1CX_start + 1 > bordC.rows - 1 || bordC.coord[boot1CX_start][boot1CY_start].type != 0 || bordC.coord[boot1CX_start + 1][boot1CY_start].type != 0) {
             boot1CX_start = int(random(bordC.rows));
             boot1CY_start = int(random(bordC.cols));
           }
@@ -901,47 +946,194 @@ public class Classic {
         }
         for (int i = 0; i < 2; i++) {
           bordC.coord[boot1CX[i]][boot1CY[i]].type = 3;
-
-          if (boot1CY[0] != 0) {
+          
+          if(boot1CY[0] != 0) {
             bordC.coord[boot1CX[i]][boot1CY[i] - 1].type = 4;
           }
-          if (boot1CY[0] != bordC.rows - 1) {
+          if(boot1CY[0] != bordC.rows - 1) {
             bordC.coord[boot1CX[i]][boot1CY[i] + 1].type = 4;
           }
-          if (boot1CX[0] != 0) {
+          if(boot1CX[0] != 0) {
             bordC.coord[boot1CX[0] - 1][boot1CY[0]].type = 4;
           }
-          if (boot1CX[1] != bordC.cols - 1) {
+          if(boot1CX[1] != bordC.cols - 1) {
             bordC.coord[boot1CX[1] + 1][boot1CY[1]].type = 4;
           }
         }
       }
       alleBotenCGeplaatst(); //hier wordt gecheckt of uit de while-lus mag gegaan worden of niet
       tel++;
-      //Dit was om te testen of de boten goed worden gezet
+       //Dit was om te testen of de boten goed worden gezet
       for (int i = 0; i < 10; i ++) {
         println(bordC.coord[i][0].type + " " + bordC.coord[i][1].type + " " + bordC.coord[i][2].type + " " + bordC.coord[i][3].type + " " + bordC.coord[i][4].type + " " + bordC.coord[i][5].type + " " + bordC.coord[i][6].type + " " + bordC.coord[i][7].type + " " + bordC.coord[i][8].type + " " + bordC.coord[i][9].type);
       }
     }
     loop();
   }
-
+  
   /*
   *  deze methode bekijkt of alle boten goed gezet zijn
    */
-  private boolean alleBotenCGeplaatst() {
-    int boothokjes = 0;
-    for (int i = 0; i < bordC.rows; i++) {
-      for (int j = 0; j < bordC.cols; j++) {
-        if (bordC.coord[i][j].type == 3) {
-          boothokjes++;
-        }
-      }
-    }
+   private boolean alleBotenCGeplaatst() {
+     int boothokjes = 0;
+     for(int i = 0; i < bordC.rows; i++) {
+       for(int j = 0; j < bordC.cols; j++) {
+         if(bordC.coord[i][j].type == 3) {
+           boothokjes++;
+         }
+       }
+     }
+     
+     if (boothokjes == 16) {
+       return true;
+     }
+     return false;
+   }
+   
+   /*
+  *  deze methode staat in voor de schoten die uitgevoerd worden door de computer in de classic
+   */
+   private void schietenDoorComputerClassic() {
+     int tempCol = (int(random(bordP.cols)));
+     int tempRow = (int(random(bordP.rows)));
+     
+     while(bordP.coord[tempRow][tempCol].type != 0 && bordP.coord[tempRow][tempCol].type != 1 && bordP.coord[tempRow][tempCol].type != 2) {
+       tempCol = (int(random(bordP.cols)));
+       tempRow = (int(random(bordP.rows)));
+     }
+     
+     if (bordP.coord[tempRow][tempCol].type == 0 || bordP.coord[tempRow][tempCol].type == 2) {
+       bordP.coord[tempRow][tempCol].type = 6;
+       schotenDoorComputer++;
+     }
+     else if (bordP.coord[tempRow][tempCol].type == 1) {
+       bordP.coord[tempRow][tempCol].type = 5;
+       hitDoorComputer++;
+       schotenDoorComputer++;
+     }
+   }
+   
+   /*
+  *  deze methode staat in voor de schoten die uitgevoerd worden door de speler in de classic
+   */
+   private void schietenDoorSpelerClassic() {
+     int rij = (mouseY - bordC.posY)/h;
+     int kol = (mouseX - bordC.posX)/w;
 
-    if (boothokjes == 16) {
-      return true;
-    }
-    return false;
-  }
+     // Als de muis net op de rand (rechts of onder) is wordt door de bovenstaande formule de coord 10, maar dit gaat niet binnen de array van 0-9, dus wordt de 10 als 9 aangenomen
+     if (kol == bordC.cols) {
+       kol = (bordC.cols - 1);
+     } 
+     if (rij == bordC.rows) {
+       rij = bordC.rows - 1;
+     }
+       
+     if (bordC.coord[rij][kol].type == 0 || bordC.coord[rij][kol].type == 4) {
+       bordC.coord[rij][kol].type = 6;
+       schotenDoorSpeler++;
+     }
+     else if (bordC.coord[rij][kol].type == 3) {
+       bordC.coord[rij][kol].type = 5;
+       hitDoorSpeler++;
+       schotenDoorSpeler++;
+     }     
+   }
+   
+   /*
+  *  deze methode staat in voor de schoten die uitgevoerd worden door de computer in de campaign (diagonalen zoeken)
+   */
+   private void schietenDoorComputerCampaign() {
+     int tempCol = (int(random(bordP.cols)));
+     int tempRow;
+     
+      if ((tempCol % 2) == 0) {
+        tempRow = ((int(random(bordP.rows/2)) * 2) + 1);
+      } 
+      else {
+        tempRow = (int(random(bordP.rows/2)) * 2);
+      }
+     
+     while(bordP.coord[tempRow][tempCol].type != 0 && bordP.coord[tempRow][tempCol].type != 1 && bordP.coord[tempRow][tempCol].type != 2) {
+       tempCol = (int(random(bordP.cols))); 
+       if ((tempCol % 2) == 0) {
+        tempRow = ((int(random(bordP.rows/2)) * 2) + 1);
+      } 
+      else {
+        tempRow = (int(random(bordP.rows/2)) * 2);
+      }
+     }
+     
+     if (bordP.coord[tempRow][tempCol].type == 0 || bordP.coord[tempRow][tempCol].type == 2) {
+       bordP.coord[tempRow][tempCol].type = 6;
+       schotenDoorComputer++;
+     }
+     else if (bordP.coord[tempRow][tempCol].type == 1) {
+       bordP.coord[tempRow][tempCol].type = 5;
+       hitDoorComputer++;
+       schotenDoorComputer++;
+       addPotentialT(tempRow, tempCol);
+     }
+   }
+   
+   /*
+  *  deze methode staat in voor de schoten die uitgevoerd worden door de computer in de campaign (hunt mode)
+   */
+   private void hunt() {
+     if (schotenDoorSpeler == (schotenDoorComputer+1)) {
+       int tempX = potentialT_x[potentialT_x.length - 1]; //laad laatste x coord uit potentialTarget_x
+       int tempY = potentialT_y[potentialT_y.length - 1]; //laad laatste y coord uit potentialTarget_y
+       potentialT_x = shorten(potentialT_x); //verwijdert de ingeladen coor uit de potential target
+       potentialT_y = shorten(potentialT_y); //verwijdert de ingeladen coor uit de potential target
+       
+       // als gevuurd wordt op een "lege cel" wordt deze een "lege geschoten cel"
+       if (bordP.coord[tempY][tempX].type == 0 || bordP.coord[tempY][tempX].type == 2) {
+         bordP.coord[tempY][tempX].type = 6;
+         schotenDoorComputer ++;
+       }
+       // als gevuurd wordt op een "cel met boot" wordt deze een "geschoten cel met boot"
+       else if (bordP.coord[tempY][tempX].type == 1) {
+         bordP.coord[tempY][tempX].type = 5;
+         hitDoorComputer++;
+         schotenDoorComputer ++;
+         addPotentialT(tempY, tempX);
+       }
+     }
+   }
+   
+
+   
+   // de 4 punten die gecheckt moeten worden
+   private void addPotentialT(int Y, int X) {
+     checkPotentialT(Y - 1, X);
+     checkPotentialT(Y + 1, X);
+     checkPotentialT(Y, X - 1);
+     checkPotentialT(Y, X + 1);
+   }
+   
+   // checkt of de potentiele target x en y binnen de range valt en dit vak nog niet is aangeklikt, indien goed, woden deze aan de respectievelijke coords lijst toegevoegd
+   private void checkPotentialT(int Y, int X) {
+     if((Y <= (bordP.rows -1)) && (Y >= 0) && (X <= (bordP.cols - 1)) && (X >= 0)) {
+       if((bordP.coord[Y][X].type != 5) && (bordP.coord[Y][X].type != 6)) {
+        
+         int dubbel = 0;
+         for (int x = 0; x < potentialT_x.length; x++) {
+           if (X == potentialT_x[x]) {
+             for (int y = 0; y < potentialT_y.length; y++) {
+               if (Y == potentialT_y[y]) {
+                 dubbel++;
+               }
+             }
+           }
+         }
+         if (dubbel == 0) {
+           potentialT_x = append(potentialT_x,  X); // add x coord to potentialTarget_x list
+           potentialT_y = append(potentialT_y,  Y); // add y coord to potentialTarget_y list
+           println(X,Y,"potentieel");
+         }
+         else {
+          println(X,Y,"dubbel");
+         }
+       }
+     }  
+   }
 }
