@@ -1,7 +1,7 @@
 //OPM: alle arrays van de vorm boot#X en boot#Y zijn bedoeld als coördinaten van boten van speler
 //     alle arrays van de vorm boot#CX en boot#CY zijn bedoeld als coördinaten van boten van cpu
 
-public class Classic {
+public class Spelvariant {
   /*--------------Variabelen die nodig zijn om het spel te laten werken--------------*/
   private int w = 60;
   private int h = 60;
@@ -12,25 +12,25 @@ public class Classic {
   private int[] potentialT_y = {}; //lijst met potentiele y target posities
   private int hitDoorComputer = 0; // variabele die bijhoudt hoeveel bootjes al zijn geraakt door de computer
   private int hitDoorSpeler = 0;   // variabele die bijhoudt hoeveel bootjes al zijn geraakt door de speler
-
+  
   /*--------------Bord wordt gemaakt--------------*/
-  private Bord bordC = new Bord(325, 240, 10, 10, w, h);
-  private Bord bordP = new Bord(1005, 240, 10, 10, w, h);
+  private Bord bordC = new Bord(40, 240, 10, 10, w, h);
+  private Bord bordP = new Bord(720, 240, 10, 10, w, h);
 
   /*--------------Boten worden gemaakt, er wordt een array gemaakt om de boten in te zetten--------------*/
   ArrayList<Boot> bootArray;
 
-  Boot boot5 = new Boot(1035, 975, 5, true, 5, w, h);
-  Boot boot4 = new Boot(1035, 875, 4, true, 4, w, h);
-  Boot boot3 = new Boot(1395, 975, 3, true, 3, w, h);
-  Boot boot2 = new Boot(1305, 875, 2, true, 2, w, h);
-  Boot boot1 = new Boot(1455, 875, 2, true, 1, w, h);
+  Boot boot5 = new Boot(750, 975, 5, true, 5, w, h);
+  Boot boot4 = new Boot(750, 875, 4, true, 4, w, h);
+  Boot boot3 = new Boot(1110, 975, 3, true, 3, w, h);
+  Boot boot2 = new Boot(1020, 875, 2, true, 2, w, h);
+  Boot boot1 = new Boot(1170, 875, 2, true, 1, w, h);
 
   /*--------------Variabelen die de definitieve coördinaten van boten bijhoudt--------------*/
   private int[] boot5X, boot5Y, boot4X, boot4Y, boot3X, boot3Y, boot2X, boot2Y, boot1X, boot1Y;
   private int[] boot5CX, boot5CY, boot4CX, boot4CY, boot3CX, boot3CY, boot2CX, boot2CY, boot1CX, boot1CY;
 
-  public Classic() {  
+  public Spelvariant() {  
     bootArray = new ArrayList<Boot>();
     bootArray.add(boot5);
     bootArray.add(boot4);
@@ -83,7 +83,7 @@ public class Classic {
     textAlign(CENTER, TOP);
     textFont(f, 75);
     fill(255);
-    text("Classic" , width/2, 70);
+    text("Spelvariant" , width/2, 70);
     
     //aanduiden welk bord van wie is
     textAlign(LEFT);
@@ -91,7 +91,7 @@ public class Classic {
     fill(120);
     text("Computers veld:", bordC.posX, bordC.posY - 15);
     text("Spelers veld:", bordP.posX, bordP.posY - 15);
-
+    
     /*--------------Borden van speler en Computer worden getekend--------------*/
     bordP.drawBord();
     bordC.drawBord();
@@ -120,7 +120,7 @@ public class Classic {
     /*--------------Als de stopknop of de terugknop worden ingedrukt moeten de correcte acties uitgevoerd worden--------------*/
     if (update(85, height-105, 120, 70)) {
       delay(200);
-      classicAlGespeeld = false;
+      spelvariantAlGespeeld = false;
       screenPage = 1; //de terugknop verwijst naar de vorige pagina
     } else if (update(215, height-105, 110, 70)) {
       laatstePagina = screenPage;
@@ -131,6 +131,10 @@ public class Classic {
     if (!alleBotenGezet()) {
       nietAlleBotenGeplaatst();
     }
+    
+    else if (verloren || gewonnen) {
+      //println("gewonnen of verloren");
+    }
 
     else if (alleBotenGezet() && !bordC.botenGezet) {
       setC();
@@ -140,24 +144,30 @@ public class Classic {
     //als alle boten van de speler gezet zijn en als alle boten van de computer gezet zijn kan het vuren beginnen
     else {
       //noLoop();
-      // beurt speler om te schieten
+      if (hitDoorComputer == 16) {
+        gewonnen = true;
+      }
+      else if (hitDoorSpeler == 16) {
+        verloren = true;
+      }
+      
       if (schotenDoorSpeler == schotenDoorComputer) {
         if (update(bordC.posX, bordC.posY, w*bordC.cols, h*bordC.rows)){
-          schietenDoorSpelerClassic(); 
+          schietenDoorSpelerClassic();
+          //int rij = (mouseY - bordC.posY)/h;
+          //int kol = (mouseX - bordC.posX)/w;
         }
       }
       // beurt computer om te schieten
       else if (schotenDoorComputer + 1 == schotenDoorSpeler) {
-        schietenDoorComputerClassic();
-        /*
+        //schietenDoorComputerClassic();
         if (potentialT_x.length == 0) {
           schietenDoorComputerCampaign();
         }
         else {
           hunt();
         }
-        */
-      } 
+      }
       /*while(!gewonnen && !verloren) {
         println("test");
       }*/
@@ -209,7 +219,7 @@ public class Classic {
   }
 
   /*
-  * als de muis binnen het bordP is wordt gekeken of een boot actief en nog niet geplaatst, zo ja: hover
+  * als de muis binnen het bordP is wordt gekeken of een bot actief en nog niet geplaatst, zo ja: hover
    */
   private void hoverOverBord() {
     if (mouseX >= bordP.posX && mouseX <= (bordP.posX + w * bordP.cols) && mouseY >= bordP.posY && mouseY <= (bordP.posY + h *bordP.rows)) {
@@ -990,30 +1000,7 @@ public class Classic {
      return false;
    }
    
-   /*
-  *  deze methode staat in voor de schoten die uitgevoerd worden door de computer in de classic
-   */
-   private void schietenDoorComputerClassic() {
-     int tempCol = (int(random(bordP.cols)));
-     int tempRow = (int(random(bordP.rows)));
-     
-     while(bordP.coord[tempRow][tempCol].type != 0 && bordP.coord[tempRow][tempCol].type != 1 && bordP.coord[tempRow][tempCol].type != 2) {
-       tempCol = (int(random(bordP.cols)));
-       tempRow = (int(random(bordP.rows)));
-     }
-     
-     if (bordP.coord[tempRow][tempCol].type == 0 || bordP.coord[tempRow][tempCol].type == 2) {
-       bordP.coord[tempRow][tempCol].type = 6;
-       schotenDoorComputer++;
-     }
-     else if (bordP.coord[tempRow][tempCol].type == 1) {
-       bordP.coord[tempRow][tempCol].type = 5;
-       hitDoorComputer++;
-       schotenDoorComputer++;
-     }
-   }
-   
-   /*
+      /*
   *  deze methode staat in voor de schoten die uitgevoerd worden door de speler in de classic
    */
    private void schietenDoorSpelerClassic() {
@@ -1039,7 +1026,7 @@ public class Classic {
      }     
    }
    
-   /*
+      /*
   *  deze methode staat in voor de schoten die uitgevoerd worden door de computer in de campaign (diagonalen zoeken)
    */
    private void schietenDoorComputerCampaign() {
